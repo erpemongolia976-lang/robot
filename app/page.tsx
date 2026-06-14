@@ -7,17 +7,17 @@ export default function Home() {
   const statusRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
 
-  let model: any = null;
-  let detecting = false;
-  let greeted = false;
-  let animation: any;
-  let interval: any;
+  const modelRef = useRef<any>(null);
+  const detectingRef = useRef(false);
+  const greetedRef = useRef(false);
+  const animationRef = useRef<any>(null);
+  const intervalRef = useRef<any>(null);
 
   // 🎬 Lottie
   const loadLottie = async () => {
     const lottie = (await import("lottie-web")).default;
 
-    animation = lottie.loadAnimation({
+    animationRef.current = lottie.loadAnimation({
       container: document.getElementById("lottie")!,
       renderer: "svg",
       loop: true,
@@ -39,7 +39,7 @@ export default function Home() {
     }
   };
 
-  // 🧠 Model (FIXED CPU backend)
+  // 🧠 Model (CPU SAFE)
   const loadModel = async () => {
     const tf = await import("@tensorflow/tfjs");
     await import("@tensorflow/tfjs-backend-cpu");
@@ -49,7 +49,7 @@ export default function Home() {
 
     const cocoSsd = await import("@tensorflow-models/coco-ssd");
 
-    model = await cocoSsd.load();
+    modelRef.current = await cocoSsd.load();
 
     if (statusRef.current) {
       statusRef.current.innerText = "✅ CPU mode дээр бэлэн";
@@ -63,32 +63,30 @@ export default function Home() {
     speechSynthesis.speak(utterance);
   };
 
-  // 🌐 API
+  // 🌐 API (CORS FIX via proxy)
   const getCustomerName = async (attendanceId: string) => {
     try {
-      const url =
-        "https://e-mongolia.mn/portal/shared-service/api/attendanceLog/customerFullName?attendanceId=" +
-        encodeURIComponent(attendanceId);
+      const res = await fetch(`/api/customer?attendanceId=${attendanceId}`);
 
-      const res = await fetch(url);
       const data = await res.json();
 
-      console.log("📡 API RESPONSE:", data);
+      console.log("API RESPONSE:", data);
 
       return data.data;
-    } catch (e) {
-      console.log(e);
+    } catch (err) {
+      console.log(err);
       return null;
     }
   };
 
+  // 🤖 Detection LOOP
   const detectPerson = async () => {
-    if (detecting || !model || !videoRef.current) return;
+    if (detectingRef.current || !modelRef.current || !videoRef.current) return;
 
-    detecting = true;
+    detectingRef.current = true;
 
     try {
-      const predictions = await model.detect(videoRef.current);
+      const predictions = await modelRef.current.detect(videoRef.current);
 
       const personFound = predictions.some(
         (p: any) => p.class === "person" && p.score > 0.75,
@@ -99,10 +97,10 @@ export default function Home() {
           statusRef.current.innerText = "👤 Хүн илэрлээ";
         }
 
-        animation?.play();
+        animationRef.current?.play();
 
-        if (!greeted) {
-          greeted = true;
+        if (!greetedRef.current) {
+          greetedRef.current = true;
 
           const name = await getCustomerName("6a2bcf924673f26a9c2c1da4");
 
@@ -117,28 +115,30 @@ export default function Home() {
           statusRef.current.innerText = "⏳ Хүн хүлээж байна";
         }
 
-        animation?.stop();
-        greeted = false;
+        animationRef.current?.stop();
+        greetedRef.current = false;
       }
     } catch (e) {
       console.log(e);
     }
 
-    detecting = false;
+    detectingRef.current = false;
   };
+
+  // 🚀 INIT
   useEffect(() => {
     const init = async () => {
       await startCamera();
       await loadModel();
       await loadLottie();
 
-      interval = setInterval(detectPerson, 1000);
+      intervalRef.current = setInterval(detectPerson, 1000);
     };
 
     init();
 
     return () => {
-      clearInterval(interval);
+      clearInterval(intervalRef.current);
     };
   }, []);
 
