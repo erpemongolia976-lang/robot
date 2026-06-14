@@ -143,12 +143,28 @@ export default function Home() {
   }, []);
 
   return (
-    <div className="flex flex-col items-center justify-center h-screen bg-gray-100">
+    <div className="h-screen w-screen overflow-hidden grid grid-cols-7 bg-white">
       <video ref={videoRef} className="hidden" />
 
-      <div id="lottie" className="w-[200px] h-[200px]" />
+      {/* Robot - 5/7 */}
+      <div className="col-span-5 flex items-center justify-center">
+        <img
+          src="/Robot4.png"
+          alt="Robot"
+          className="w-full h-[1080px] object-contain"
+        />
+      </div>
 
-      <div ref={statusRef} className="text-2xl font-bold mt-5">
+      {/* QR - 2/7 */}
+      <div className="col-span-2 flex items-center justify-start">
+        <img src="/QR.png" alt="QR" className="w-3/5 h-auto object-contain" />
+      </div>
+
+      {/* Status text */}
+      <div
+        ref={statusRef}
+        className="absolute bottom-10 left-1/2 -translate-x-1/2 text-2xl font-bold text-black z-20"
+      >
         Систем эхэлж байна...
       </div>
 
