@@ -12,21 +12,6 @@ export default function Home() {
   const greetedRef = useRef(false);
   const animationRef = useRef<any>(null);
   const intervalRef = useRef<any>(null);
-
-  // 🎬 Lottie
-  const loadLottie = async () => {
-    const lottie = (await import("lottie-web")).default;
-
-    animationRef.current = lottie.loadAnimation({
-      container: document.getElementById("lottie")!,
-      renderer: "svg",
-      loop: true,
-      autoplay: true,
-      path: "/loading.json",
-    });
-  };
-
-  // 📷 Camera
   const startCamera = async () => {
     const stream = await navigator.mediaDevices.getUserMedia({
       video: true,
@@ -39,7 +24,6 @@ export default function Home() {
     }
   };
 
-  // 🧠 Model (CPU SAFE)
   const loadModel = async () => {
     const tf = await import("@tensorflow/tfjs");
     await import("@tensorflow/tfjs-backend-cpu");
@@ -52,15 +36,50 @@ export default function Home() {
     modelRef.current = await cocoSsd.load();
 
     if (statusRef.current) {
-      statusRef.current.innerText = "✅ CPU mode дээр бэлэн";
+      statusRef.current.innerText = "";
     }
   };
 
-  // 🔊 Speak
-  const speak = (text: string) => {
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = "mn-MN";
-    speechSynthesis.speak(utterance);
+  // 🔊 Speak (SpeechGen API)
+  const speak = async (text: string, onEnd?: () => void) => {
+    console.log("🔊 SpeechGen дуудаж байна:", text);
+
+    try {
+      const res = await fetch("/api/speechgen", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text }),
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        console.error("SpeechGen API алдаа:", error);
+        return;
+      }
+
+      const data = await res.json();
+      const audioUrl = data.audioUrl;
+
+      if (!audioUrl) {
+        console.error("Audio URL олдсонгүй");
+        return;
+      }
+
+      console.log("✅ Audio URL:", audioUrl);
+
+      // Audio тоглуулах
+      const audio = new Audio(audioUrl);
+      audio.onloadeddata = () => console.log("▶️ Дуу тоглож байна");
+      audio.onended = () => {
+        console.log("⏹️ Дуу дууслаа");
+        if (onEnd) onEnd();
+      };
+      audio.onerror = (e) => console.error("❌ Audio алдаа:", e);
+
+      await audio.play();
+    } catch (error) {
+      console.error("Speak алдаа:", error);
+    }
   };
 
   // 🌐 API (CORS FIX via proxy)
@@ -94,7 +113,7 @@ export default function Home() {
 
       if (personFound) {
         if (statusRef.current) {
-          statusRef.current.innerText = "👤 Хүн илэрлээ";
+          statusRef.current.innerText = "";
         }
 
         animationRef.current?.play();
@@ -104,15 +123,21 @@ export default function Home() {
 
           const name = await getCustomerName("6a2bcf924673f26a9c2c1da4");
 
-          if (name && name !== "Зочин") {
-            speak(`${name} амжилттай бүртгүүллээ`);
-          }
+          console.log("👤 Хэрэглэгчийн нэр:", name);
+          console.log("🎯 Зочин эсэх:", name === "Зочин");
 
-          audioRef.current?.play();
+          if (name && name !== "Зочин") {
+            console.log("✅ Нэр хэлэх:", name);
+            speak(name, () => {
+              speak("амжилттай бүртгүүллээ");
+            });
+          } else {
+            console.log("⏭️ Зочин байна, дуу гаргахгүй");
+          }
         }
       } else {
         if (statusRef.current) {
-          statusRef.current.innerText = "⏳ Хүн хүлээж байна";
+          statusRef.current.innerText = "";
         }
 
         animationRef.current?.stop();
@@ -125,12 +150,16 @@ export default function Home() {
     detectingRef.current = false;
   };
 
-  // 🚀 INIT
   useEffect(() => {
     const init = async () => {
       await startCamera();
       await loadModel();
-      await loadLottie();
+
+      // Анхны мэндчилгээ - soundT.mp3 тоглуулах
+      setTimeout(() => {
+        console.log("🔊 soundT.mp3 тоглуулж байна");
+        audioRef.current?.play();
+      }, 1000);
 
       intervalRef.current = setInterval(detectPerson, 1000);
     };
@@ -143,32 +172,41 @@ export default function Home() {
   }, []);
 
   return (
-    <div className="h-screen w-screen overflow-hidden grid grid-cols-7 bg-white">
+    <div className="h-screen w-screen overflow-hidden grid grid-cols-3 bg-gray-200 px-10">
       <video ref={videoRef} className="hidden" />
 
-      {/* Robot - 5/7 */}
-      <div className="col-span-5 flex items-center justify-center">
+      {/* Image 1 - 1/3 */}
+      <div className="col-span-1 flex items-center justify-center p-4">
         <img
-          src="/Robot4.png"
-          alt="Robot"
-          className="w-full h-[1080px] object-contain"
+          src="/image2.png"
+          alt="Image 1"
+          className="w-full h-full object-contain"
         />
       </div>
 
-      {/* QR - 2/7 */}
-      <div className="col-span-2 flex items-center justify-start">
-        <img src="/QR.png" alt="QR" className="w-3/5 h-auto object-contain" />
+      {/* QR - 1/3 */}
+      <div className="col-span-1 flex items-center justify-center p-4">
+        <img
+          src="/QR.png"
+          alt="QR Code"
+          className="w-1/2 h-auto object-contain"
+        />
       </div>
 
-      {/* Status text */}
+      {/* Image 2 - 1/3 */}
+      <div className="col-span-1 flex items-center justify-center p-4">
+        <img
+          src="/image1.png"
+          alt="Image 2"
+          className="w-full h-full object-contain"
+        />
+      </div>
       <div
         ref={statusRef}
         className="absolute bottom-10 left-1/2 -translate-x-1/2 text-2xl font-bold text-black z-20"
-      >
-        Систем эхэлж байна...
-      </div>
+      ></div>
 
-      <audio ref={audioRef} src="/sound1.mp3" />
+      <audio ref={audioRef} src="/soundT.mp3" />
     </div>
   );
 }
