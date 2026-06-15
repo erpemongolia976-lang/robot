@@ -151,32 +151,46 @@ export default function Home() {
   };
 
   useEffect(() => {
-    const init = async () => {
-      await startCamera();
-      await loadModel();
+    const playAudio = () => {
+      console.log("🔊 soundT.mp3 тоглуулж байна");
+      if (audioRef.current) {
+        audioRef.current.currentTime = 0;
+        audioRef.current.play();
+      }
+    };
 
-      // Анхны мэндчилгээ - soundT.mp3 тоглуулах
+    const init = async () => {
+      // Анхны мэндчилгээ - 1 секундын дараа
       setTimeout(() => {
-        console.log("🔊 soundT.mp3 тоглуулж байна");
-        audioRef.current?.play();
+        playAudio();
       }, 1000);
 
-      intervalRef.current = setInterval(detectPerson, 1000);
+      // MP3 дууссаны дараа 10 секунд хүлээгээд дахин тоглуулах
+      if (audioRef.current) {
+        audioRef.current.onended = () => {
+          console.log("⏹️ MP3 дууслаа, 10 секунд хүлээнэ...");
+          setTimeout(() => {
+            playAudio();
+          }, 10000);
+        };
+      }
     };
 
     init();
 
     return () => {
-      clearInterval(intervalRef.current);
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
     };
   }, []);
 
   return (
-    <div className="h-screen w-screen overflow-hidden grid grid-cols-3 bg-gray-200 px-10">
+    <div className="fixed inset-0 w-full h-full overflow-hidden grid grid-cols-3 bg-gray-200 px-5">
       <video ref={videoRef} className="hidden" />
 
       {/* Image 1 - 1/3 */}
-      <div className="col-span-1 flex items-center justify-center p-4">
+      <div className="col-span-1 flex items-center justify-center">
         <img
           src="/image2.png"
           alt="Image 1"
@@ -185,16 +199,16 @@ export default function Home() {
       </div>
 
       {/* QR - 1/3 */}
-      <div className="col-span-1 flex items-center justify-center p-4">
+      <div className="col-span-1 flex items-center justify-center">
         <img
           src="/QR.png"
           alt="QR Code"
-          className="w-1/2 h-auto object-contain"
+          className="w-3/4 h-auto object-contain"
         />
       </div>
 
       {/* Image 2 - 1/3 */}
-      <div className="col-span-1 flex items-center justify-center p-4">
+      <div className="col-span-1 flex items-center justify-center">
         <img
           src="/image1.png"
           alt="Image 2"
